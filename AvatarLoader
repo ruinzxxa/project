@@ -1,0 +1,55 @@
+local HttpProxy = require(game.ServerScriptService.ProxyRobloxAPI:Clone());
+
+local Players = game:GetService("Players")
+
+local serverstorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local outfitsFolder = workspace.loadedOutfits
+local currentOutfit = workspace.currentOutfit
+local inputScreen = workspace.Interactive.Screens.Input
+
+local remoteEvent = ReplicatedStorage:WaitForChild("SpawnChar")
+
+local function createchar(plr, name)
+	print("function createchar fired")
+	inputScreen.accepted:Play()
+	local s, x = pcall(function()
+		local id = Players:GetUserIdFromNameAsync(name)
+		local response = HttpProxy:GetAsync("https://avatar.roblox.com/v1/users/"..id.."/avatar")
+		local desc = game.Players:GetHumanoidDescriptionFromUserId(id)
+		currentOutfit:ClearAllChildren()
+		outfitsFolder:ClearAllChildren()
+		if response.playerAvatarType == "R6" then
+			local clone6 = serverstorage.BaseAvatarR6:Clone()
+			clone6.Parent = currentOutfit
+			clone6.Name = "MainAvatar"
+			clone6:FindFirstChild("Humanoid"):ApplyDescription(desc)
+			clone6:WaitForChild("HumanoidRootPart").CFrame = workspace.Avtar_Spawn.CFrame
+			clone6:WaitForChild("Humanoid").DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			wait(1) 
+			clone6:WaitForChild("HumanoidRootPart").Anchored = true
+			-- animations
+			--- local F_Animation = clone6.Humanoid:LoadAnimation(game.Lighting.animations:WaitForChild("R6Animation")) -- start animations
+			-- F_Animation:Play()
+			-- F_Animation.Looped = true
+		end
+		if response.playerAvatarType == "R15" then
+			local clone15 = serverstorage.BaseAvatarR15:Clone()
+			clone15.Parent = currentOutfit
+			clone15.Name = "MainAvatar"
+			clone15:FindFirstChild("Humanoid"):ApplyDescription(desc)
+			clone15:WaitForChild("HumanoidRootPart").CFrame =  workspace.Avtar_Spawn.CFrame
+			wait(1)
+			clone15:WaitForChild("HumanoidRootPart").Anchored = true
+			clone15:WaitForChild("Humanoid").DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+			--animations
+			--local F_Animation = clone15.Humanoid:LoadAnimation(game.Lighting.animations:FindFirstChild("R15Animation")) -- start animations
+			--F_Animation:Play()
+			--F_Animation.Looped = true
+		end
+	end)
+end
+
+
+remoteEvent.OnServerEvent:Connect(createchar)
