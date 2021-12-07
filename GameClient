@@ -1,0 +1,13 @@
+local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
+local inventory_games = workspace.Interactive.Screens.Screen_Games
+local clickable = false
+local plr = Players.LocalPlayer
+
+inventory_games.Misc.GamesFrame.ChildAdded:Connect(function(child)
+	wait(0.5)
+	child:FindFirstChild("GameThumbnail").Activated:Connect(function()
+		local gameid = child:WaitForChild("placeid").Value
+		TeleportService:Teleport(gameid)
+	end)
+end)
