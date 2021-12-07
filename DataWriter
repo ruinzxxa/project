@@ -1,0 +1,156 @@
+local httpService = game:GetService("HttpService")
+local Players = game:GetService("Players")
+local groupService = game:GetService("GroupService")
+
+local serverstorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local remoteEvent = ReplicatedStorage:WaitForChild("SpawnChar")
+
+local thumbnail = Enum.ThumbnailType.HeadShot
+local thumbSize = Enum.ThumbnailSize.Size100x100
+
+local proxyHttp = require(game.ServerScriptService.ProxyRobloxAPI:Clone())
+local Typewriter = require(game:GetService("Lighting").PublicModules.Typewriter)
+
+local inventory_screen = workspace.Interactive.Screens.Screen_Inventory
+local inventory_games = workspace.Interactive.Screens.Screen_Games
+local infoScreen = workspace.Interactive.Screens.Screen_Info
+local inputScreen = workspace.Interactive.Screens.Input
+local GroupDisplayName = script.GroupF
+local inProgress = game:GetService("Lighting").Values.inprogress
+
+local banned = nil
+local userid = nil
+local Online = nil
+
+local function displayInfo(plr, plrname)
+	print("function displayInfo fired")
+	local s, x = pcall(function()
+		userid = game.Players:GetUserIdFromNameAsync(plrname)
+	end)
+	wait(0.5)
+	if not userid then print("invalid username") inputScreen.denied:Play() else
+		local F_thumbnailC = Players:GetUserThumbnailAsync(userid,thumbnail,thumbSize)
+		local friendcount = proxyHttp:GetAsync("https://friends.roblox.com/v1/users/"..userid.."/friends/count")
+		local followercount = proxyHttp:GetAsync("https://friends.roblox.com/v1/users/"..userid.."/followers/count")
+		local accountinfo = proxyHttp:GetAsync("https://users.roblox.com/v1/users/"..userid)
+		local pastusernames = proxyHttp:GetAsync("https://users.roblox.com/v1/users/"..userid.."/username-history")
+		local followingcount = proxyHttp:GetAsync("https://friends.roblox.com/v1/users/"..userid.."/followings/count")
+		local gameshttp = proxyHttp:GetAsync("https://games.roblox.com/v2/users/"..userid.."/games?sortOrder=Asc&limit=50")
+		local getinventory = proxyHttp:GetAsync("https://inventory.roblox.com/v2/users/"..userid.."/inventory?assetTypes=Audio&limit=100&sortOrder=Asc")
+		local lastonline = proxyHttp:GetAsync("http://api.roblox.com/users/"..userid.."/onlinestatus/")
+		local groupsapi = proxyHttp:GetAsync("https://groups.roblox.com/v2/users/"..userid.."/groups/roles")
+		print("foi")
+		if accountinfo.isBanned == true then banned = "true" else banned = "false" end
+		if lastonline.Onlinene == true then Online = "true" else Online = "false" end
+		inProgress.Value = true
+		
+		spawn(function()
+			print("1")
+			for i,v in pairs(infoScreen.Misc.PastUsernamesFrame:GetChildren()) do if v:IsA("TextLabel") or v:IsA("Frame") then v:Destroy() end end
+			for i,v in pairs(infoScreen.Misc.GroupsFrame:GetChildren()) do if v:IsA("TextLabel") or v:IsA("Frame") then v:Destroy() end end
+			for i,v in pairs(inventory_games.Misc.GamesFrame:GetChildren()) do if v:IsA("TextLabel") or v:IsA("Frame") then v:Destroy() end end
+		end)
+
+		spawn(function()
+			print("2")
+			if not pastusernames then print("no pastusernames")
+			else
+				for loop = 1, #pastusernames.data do
+					wait(0.08)
+					local clone = script.Username:Clone()
+					clone.Text = pastusernames.data[loop].name
+					clone.Parent = infoScreen.Misc.PastUsernamesFrame
+				end
+			end
+		end)
+
+		spawn(function()
+			print("3")
+			if #gameshttp.data == 0 then
+				inventory_games.Misc.Error.TextTransparency = 0
+				inventory_games.Misc.Text.TextTransparency = 0
+				inventory_games.Misc.errorimg.ImageTransparency = 0
+			else
+				inventory_games.Misc.Error.TextTransparency = 1
+				inventory_games.Misc.Text.TextTransparency = 1
+				inventory_games.Misc.errorimg.ImageTransparency = 1
+				for loop = 1, #gameshttp.data do
+					wait(0.08)
+					local audclone = game.Lighting.audio.panels:Clone()
+					audclone.Parent = inventory_games
+					audclone:Play()
+					local clone = script.GameFrame:Clone()
+					clone.GameName.Text = gameshttp.data[loop].name
+					clone.Visits.Text = "Visits: "..gameshttp.data[loop].placeVisits
+					clone.Name = gameshttp.data[loop].name
+					clone.placeid.Value = gameshttp.data[loop].rootPlace.id
+					clone.GameThumbnail.Image = "https://assetgame.roblox.com/Game/Tools/ThumbnailAsset.ashx?aid="..gameshttp.data[loop].rootPlace.id.."&fmt=png&wd=420&ht=420"
+					clone.Parent = inventory_games.Misc.GamesFrame
+				end
+			end
+		end)
+
+		spawn(function()
+			print("")
+			if #groupsapi.data > 0 then
+				for loop = 1, #groupsapi.data do
+					wait(0.04)
+					local Clone = script.GroupF:Clone()
+					Clone.GroupName.Text = groupsapi.data[loop].group.name
+					Clone.Members.Text = "Members: "..groupsapi.data[loop].group.memberCount
+					Clone.Name = groupsapi.data[loop].group.name
+					Clone.groupid.Value = groupsapi.data[loop].group.id
+					Clone.GroupBanner.Image = groupService:GetGroupInfoAsync(groupsapi.data[loop].group.id).EmblemUrl
+					Clone.PlayerRank.Text = "Rank: "..groupsapi.data[loop].role.name.."("..groupsapi.data[loop].role.rank..")"
+					Clone.Parent = infoScreen.Misc.GroupsFrame
+				end
+			end
+		end)
+
+		local sound = infoScreen:FindFirstChildWhichIsA("Sound")
+		infoScreen.Misc.plrthumbnail.Image = F_thumbnailC
+
+		local writeAsync = Typewriter.new(inventory_games.Misc.TextLabel,true, sound)
+		writeAsync(plrname.."'s Games", 0.6)
+
+		local writeAsync = Typewriter.new(inventory_screen.Misc.TextLabel,true, sound)
+		writeAsync(plrname.."'s Inventory", 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc.UserId,true, sound)
+		writeAsync("Userid: ".. userid, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Name"),true, sound)
+		writeAsync("PlayerName: "..plrname	, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Friends"),true, sound)
+		writeAsync("Friends: "..friendcount.count, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Followers"),true, sound)
+		writeAsync("Followers: "..followercount.count, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Following"),true, sound)
+		writeAsync("Following: "..followingcount.count, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("LastLocation"),true, sound)
+		writeAsync("LastLocation: "..lastonline.LastLocation, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("JoinDate"),true, sound)
+		writeAsync("Created: "..accountinfo.created, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("LastOnline"),true, sound)
+		writeAsync("LastOnline: "..lastonline.LastOnline, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Isonline"),true, sound)
+		writeAsync("Online: "..Online, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("DisplayName"),true, sound)
+		writeAsync("DisplayName: "..accountinfo.displayName, 0.6)
+
+		local writeAsync = Typewriter.new(infoScreen.Misc:WaitForChild("Banned"),true, sound)
+		writeAsync("Banned: "..banned, 0.6)
+
+		inProgress.Value = false
+	end
+end
+remoteEvent.OnServerEvent:Connect(displayInfo)
