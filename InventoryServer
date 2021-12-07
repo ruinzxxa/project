@@ -1,0 +1,89 @@
+local proxyHttp = require(game.ServerScriptService.ProxyRobloxAPI:Clone())
+local httpService = game:GetService("HttpService")
+
+local Players = game:GetService("Players")
+local serverstorage = game:GetService("ServerStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+local remoteEvent = ReplicatedStorage:WaitForChild("SpawnChar")
+
+local inventory_screen = workspace.Interactive.Screens.Screen_Inventory
+
+local clickable = false
+local userid = nil
+
+local Buttons = {
+	Audio = inventory_screen.Misc.ButtonScrollingFrame.Audio;
+	Hat = inventory_screen.Misc.ButtonScrollingFrame.Hat;
+	Model = inventory_screen.Misc.ButtonScrollingFrame.Model;
+	Pants = inventory_screen.Misc.ButtonScrollingFrame.Pants;
+	Shirt = inventory_screen.Misc.ButtonScrollingFrame.Shirt;
+	Decal = inventory_screen.Misc.ButtonScrollingFrame.Decal;
+	Face = inventory_screen.Misc.ButtonScrollingFrame.Face;
+	TShirt = inventory_screen.Misc.ButtonScrollingFrame.TShirt
+}
+
+local function clearInventory(obj) for i, v in pairs(inventory_screen.Misc.InventoryFrame:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end end
+
+local function destroySounds() for i, v in pairs(inventory_screen:GetChildren()) do if v:IsA("Sound") then v:Destroy() end end end	
+
+local function showInventory(plr, plrname)
+	print("function showInventory fired")
+	local s, x = pcall(function()
+		userid = game.Players:GetUserIdFromNameAsync(plrname)
+	end)
+	for i, button in pairs(Buttons) do
+		button.MouseButton1Click:Connect(function()
+			destroySounds()
+			print(button.name)
+			if clickable == false then
+				clickable = true
+				local getinventory = proxyHttp:GetAsync("https://inventory.roblox.com/v2/users/"..userid.."/inventory?assetTypes="..button.Name.."&limit=100&sortOrder=Asc")
+				clearInventory()
+				if not getinventory then
+					inventory_screen.Misc.ErrorText.Text = "Inventory Is Private"
+					inventory_screen.Misc.ErrorText.TextTransparency = 0
+					inventory_screen.Misc.ErrorTextTitle.TextTransparency = 0
+					inventory_screen.Misc.error.ImageTransparency = 0
+				else
+					if #getinventory.data == 0 then
+						inventory_screen.Misc.ErrorText.Text = "User Has No Items Of This Category"
+						inventory_screen.Misc.ErrorText.TextTransparency = 0
+						inventory_screen.Misc.ErrorTextTitle.TextTransparency = 0
+						inventory_screen.Misc.error.ImageTransparency = 0
+					else
+						inventory_screen.Misc.ErrorText.TextTransparency = 1
+						inventory_screen.Misc.ErrorTextTitle.TextTransparency = 1
+						inventory_screen.Misc.error.ImageTransparency = 1
+						for loop = 1, #getinventory.data do
+							wait(0.08)
+							local audclone = game.Lighting.audio.panels:Clone()
+							audclone.Parent = inventory_screen
+							audclone:Play()
+							local clone = script:WaitForChild("Inventoryframe"):Clone()
+							clone.assettype.Value = button.name
+							clone.AssetName.Text = getinventory.data[loop].name
+							clone.Name = getinventory.data[loop].name
+							clone.assetid.Value = getinventory.data[loop].assetId
+							if button.name == "Audio" then
+								clone.PlayAudio.Visible = true
+								clone.PlayAudio.Active = true
+								clone.AssetThumbnail.Image = "rbxassetid://7860233247"
+							else
+								clone.PlayAudio.Visible = false
+								clone.PlayAudio.Active = false
+								clone.AssetThumbnail.Image = "https://www.roblox.com/asset-thumbnail/image?assetId="..getinventory.data[loop].assetId.."&width=420&height=420&format=png"
+							end
+							clone.Parent = inventory_screen.Misc.InventoryFrame
+						end
+					end
+					clickable = false
+				end
+			end
+		end)
+	end
+	clickable = false
+end
+
+
+remoteEvent.OnServerEvent:Connect(showInventory)
