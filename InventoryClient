@@ -1,0 +1,20 @@
+local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
+local inventory_screen = workspace.Interactive.Screens.Screen_Inventory
+
+local clickable = false
+
+local plr = Players.LocalPlayer
+local gui = plr.PlayerGui:WaitForChild("Main")
+
+inventory_screen.Misc.InventoryFrame.ChildAdded:Connect(function(child)
+	local AssetID = child:WaitForChild("assetid").Value
+	wait(0.5)
+	child:FindFirstChild("AssetThumbnail").Activated:Connect(function()
+		MarketplaceService:PromptPurchase(plr, AssetID)
+	end)
+	child:FindFirstChild("PlayAudio").Activated:Connect(function()
+		gui.SoundPreview.SoundId = "rbxassetid://"..AssetID
+		gui.SoundPreview:Play()
+	end)
+end)
